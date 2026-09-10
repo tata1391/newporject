@@ -5,7 +5,7 @@ from app.reports.service import ReportTestService
 
 
 @pytest.mark.asyncio
-async def test_run_test_with_fake_sender(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_test_with_fake_sender() -> None:
     async def fake_sender(request: ReportRequest) -> ReportResult:
         return ReportResult(
             status=TestStatus.SUCCESS,
@@ -14,7 +14,6 @@ async def test_run_test_with_fake_sender(monkeypatch: pytest.MonkeyPatch) -> Non
             message="simulated",
         )
 
-    monkeypatch.setattr("app.reports.service.settings.request_delay", 0.0)
     service = ReportTestService(fake_sender)
     result = await service.run_test(
         "fake",
@@ -28,11 +27,10 @@ async def test_run_test_with_fake_sender(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
-async def test_sender_exception_becomes_failed_result(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_sender_exception_becomes_failed_result() -> None:
     async def failing_sender(request: ReportRequest) -> ReportResult:
         raise RuntimeError("simulated failure")
 
-    monkeypatch.setattr("app.reports.service.settings.request_delay", 0.0)
     service = ReportTestService(failing_sender)
     result = await service.run_test(
         "failure",
@@ -45,20 +43,15 @@ async def test_sender_exception_becomes_failed_result(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
-async def test_request_limit_is_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.reports.service.settings.max_test_requests", 1)
-    monkeypatch.setattr("app.reports.service.settings.request_delay", 0.0)
-
+async def test_request_limit_is_enforced() -> None:
     async def fake_sender(request: ReportRequest) -> ReportResult:
         return ReportResult(TestStatus.SUCCESS, request.target_id, request.report_type)
 
     service = ReportTestService(fake_sender)
+    requests = [
+        ReportRequest(f"test-{index}", ReportType.OTHER)
+        for index in range(11)
+    ]
 
     with pytest.raises(ValueError):
-        await service.run_test(
-            "limit",
-            [
-                ReportRequest("test-1", ReportType.OTHER),
-                ReportRequest("test-2", ReportType.OTHER),
-            ],
-        )
+        await service.run_test("limit", requests)
