@@ -1,1 +1,2 @@
 python-dotenv>=1.0,<2.0
+aiobale @ git+https://github.com/Enalite/aiobale.git@v0.1.5
