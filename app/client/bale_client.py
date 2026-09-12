@@ -3,31 +3,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.client.aiobale_adapter import AiobaleAdapter
+
 
 @dataclass
 class BaleClient:
-    """Thin adapter for the Bale client used by the test harness.
+    """Application-level wrapper around the controlled Aiobale connection."""
 
-    The concrete aiobale integration is intentionally injected instead of
-    guessing version-specific APIs.
-    """
+    session_name: str
+    adapter: AiobaleAdapter | None = None
 
-    client: Any | None = None
+    def __post_init__(self) -> None:
+        if self.adapter is None:
+            self.adapter = AiobaleAdapter(self.session_name)
 
-    async def connect(self) -> None:
-        if self.client is None:
-            return
-        connect = getattr(self.client, "connect", None)
-        if connect is not None:
-            result = connect()
-            if hasattr(result, "__await__"):
-                await result
+    @property
+    def client(self) -> Any | None:
+        assert self.adapter is not None
+        return self.adapter.client
+
+    async def connect(self) -> Any:
+        assert self.adapter is not None
+        return await self.adapter.connect()
 
     async def close(self) -> None:
-        if self.client is None:
-            return
-        close = getattr(self.client, "close", None)
-        if close is not None:
-            result = close()
-            if hasattr(result, "__await__"):
-                await result
+        assert self.adapter is not None
+        await self.adapter.close()
+
+    async def __aenter__(self) -> "BaleClient":
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        await self.close()
