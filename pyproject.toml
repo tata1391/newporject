@@ -5,28 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bale-security-test-harness"
 version = "0.1.0"
-description = "Controlled security-testing harness for Bale integrations"
-requires-python = ">=3.10"
+description = "Controlled, mock-first security test harness for Bale report-system behaviour"
+readme = "README.md"
+requires-python = ">=3.11"
 dependencies = [
-    "python-dotenv>=1.0,<2.0",
-    "aiobale @ git+https://github.com/Enalite/aiobale.git@v0.1.5",
+  "python-dotenv>=1.0,<2.0",
+  "aiobale-py==0.3.8",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8,<9",
-    "pytest-asyncio>=0.23,<2",
-    "ruff>=0.6,<1",
+test = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra"
 asyncio_mode = "auto"
-pythonpath = ["."]
+testpaths = ["tests"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+[tool.setuptools.packages.find]
+include = ["app*"]

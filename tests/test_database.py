@@ -1,12 +1,45 @@
 import json
 
-from app.database import save_event
+import pytest
+
+from app.database import JsonlEventLogger
+from app.reports.models import ReportResult, ReportType, TestStatus as Status
 
 
-def test_save_event_writes_jsonl(tmp_path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    save_event({"kind": "test", "value": 1})
+@pytest.mark.asyncio
+async def test_creates_jsonl_event(tmp_path) -> None:
+    path = tmp_path / "events.jsonl"
+    logger = JsonlEventLogger(path)
+    await logger.log_report_result(
+        "db-test",
+        ReportResult(
+            Status.SUCCESS,
+            "TEST_TARGET",
+            ReportType.OTHER,
+            duration=0.42,
+        ),
+    )
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    event = json.loads(lines[0])
+    assert event["test_name"] == "db-test"
+    assert event["status"] == "success"
+    assert event["duration"] == 0.42
 
-    line = (tmp_path / "logs" / "events.jsonl").read_text(encoding="utf-8").strip()
-    event = json.loads(line)
-    assert event == {"kind": "test", "value": 1}
+
+@pytest.mark.asyncio
+async def test_sensitive_fields_are_redacted(tmp_path) -> None:
+    path = tmp_path / "events.jsonl"
+    logger = JsonlEventLogger(path)
+    await logger.log_event(
+        {
+            "otp": "12345",
+            "access_token": "abc",
+            "nested": {"password": "secret", "safe": "ok"},
+        }
+    )
+    event = json.loads(path.read_text(encoding="utf-8"))
+    assert event["otp"] == "[REDACTED]"
+    assert event["access_token"] == "[REDACTED]"
+    assert event["nested"]["password"] == "[REDACTED]"
+    assert event["nested"]["safe"] == "ok"
