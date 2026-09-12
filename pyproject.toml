@@ -9,6 +9,7 @@ description = "Controlled security-testing harness for Bale integrations"
 requires-python = ">=3.10"
 dependencies = [
     "python-dotenv>=1.0,<2.0",
+    "aiobale @ git+https://github.com/Enalite/aiobale.git@v0.1.5",
 ]
 
 [project.optional-dependencies]
